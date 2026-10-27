@@ -22,14 +22,17 @@ releaseType: release
   $uiSource=Join-Path $PSScriptRoot 'InstallerUI.cs'
   $uiText=[IO.File]::ReadAllText($uiSource) -replace 'YURO POUR WINDOWS   /   \d+\.\d+\.\d+', "YURO POUR WINDOWS   /   $Version"
   [IO.File]::WriteAllText($uiSource,$uiText)
+  $icon=Join-Path $PSScriptRoot 'assets\yuro.ico'
+  $logo=Join-Path $PSScriptRoot 'assets\yuro-logo.png'
+  $uninstaller=Join-Path $unpacked 'YURO-Desinstaller.exe'
   $refs=@('/reference:System.Windows.Forms.dll','/reference:System.Drawing.dll','/reference:System.IO.Compression.dll','/reference:System.IO.Compression.FileSystem.dll','/reference:Microsoft.CSharp.dll')
-  & $compiler /nologo /target:winexe /platform:x64 @refs "/win32icon:$PSScriptRoot/assets/yuro.ico" "/resource:$PSScriptRoot/assets/yuro-logo.png,Logo.png" "/out:$unpacked/YURO-Desinstaller.exe" "$PSScriptRoot/Installer.cs" "$PSScriptRoot/InstallerUI.cs"
+  & $compiler /nologo /target:winexe /platform:x64 @refs "/win32icon:$icon" "/resource:$logo,Logo.png" "/out:$uninstaller" "$installerSource" "$uiSource"
   if ($LASTEXITCODE -ne 0) { throw 'Construction du désinstallateur impossible' }
   $payload=Join-Path $outDir ('payload-'+[guid]::NewGuid().ToString('N')+'.zip')
   Add-Type -AssemblyName System.IO.Compression.FileSystem
   [IO.Compression.ZipFile]::CreateFromDirectory($unpacked,$payload,[IO.Compression.CompressionLevel]::Optimal,$false)
   $installer=Join-Path $outDir "YURO-Installation-$Version.exe"
-  & $compiler /nologo /target:winexe /platform:x64 @refs "/win32icon:$PSScriptRoot/assets/yuro.ico" "/resource:$PSScriptRoot/assets/yuro-logo.png,Logo.png" "/resource:$payload,Payload.zip" "/out:$installer" "$PSScriptRoot/Installer.cs" "$PSScriptRoot/InstallerUI.cs"
+  & $compiler /nologo /target:winexe /platform:x64 @refs "/win32icon:$icon" "/resource:$logo,Logo.png" "/resource:$payload,Payload.zip" "/out:$installer" "$installerSource" "$uiSource"
   if ($LASTEXITCODE -ne 0) { throw 'Construction de l installateur impossible' }
   $hash=[Convert]::ToBase64String([Security.Cryptography.SHA512]::Create().ComputeHash([IO.File]::ReadAllBytes($installer)))
   $size=(Get-Item -LiteralPath $installer).Length
