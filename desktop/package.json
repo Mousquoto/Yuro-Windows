@@ -1,0 +1,63 @@
+{
+  "name": "yuro-desktop",
+  "version": "1.0.3",
+  "description": "YURO — Ton univers à collectionner",
+  "author": "YURO",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dist": "powershell.exe -NoProfile -File build-installer.ps1"
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2"
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "fr.yuro.desktop",
+    "productName": "YURO",
+    "directories": {
+      "output": "../../YURO-PC"
+    },
+    "files": [
+      "main.cjs",
+      "loading.html",
+      "assets/**",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/yuro.ico",
+      "artifactName": "YURO-Installation-${version}.${ext}",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "YURO",
+      "installerLanguages": [
+        "fr_FR"
+      ],
+      "language": "1036"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Mousquoto",
+      "repo": "Yuro-Windows",
+      "releaseType": "release"
+    }
+  }
+}

@@ -1,0 +1,64 @@
+name: YURO Windows
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/desktop-windows.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows:
+    if: github.repository == 'Mousquoto/Yuro-Windows'
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      - name: Prepare Windows version
+        shell: pwsh
+        env:
+          RELEASE_REF: ${{ github.ref_name }}
+        run: |
+          $releaseVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($env:RELEASE_REF -match '^v\d+\.\d+\.\d+$') {
+            $releaseVersion = $env:RELEASE_REF.Substring(1)
+            npm version $releaseVersion --no-git-tag-version --allow-same-version
+          }
+          if ($releaseVersion -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid release version' }
+          "YURO_RELEASE_TAG=v$releaseVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Build YURO installer
+        shell: pwsh
+        run: |
+          $releaseVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          ./build-installer.ps1 -Version $releaseVersion
+      - uses: actions/upload-artifact@v4
+        with:
+          name: YURO-Windows
+          path: |
+            ../YURO-PC/*.exe
+            ../YURO-PC/*.blockmap
+            ../YURO-PC/latest.yml
+      - name: Publish Windows update
+        if: github.event_name == 'push'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view $env:YURO_RELEASE_TAG --repo $env:GITHUB_REPOSITORY
+          if ($LASTEXITCODE -eq 0) { throw 'This Windows version is already published. Increase desktop/package.json version.' }
+          $versionedInstaller = Get-ChildItem -Path ../../YURO-PC -Filter 'YURO-Installation-*.exe' -File | Select-Object -First 1
+          if (-not $versionedInstaller) { throw 'Installer missing' }
+          Copy-Item -LiteralPath $versionedInstaller.FullName -Destination ../../YURO-PC/YURO-Installation.exe
+          $releaseFiles = Get-ChildItem -Path ../../YURO-PC -File | Where-Object { $_.Name -match '\.(exe|blockmap)$|^latest\.yml$' } | ForEach-Object { $_.FullName }
+          if (-not $releaseFiles) { throw 'Installer files missing' }
+          gh release create $env:YURO_RELEASE_TAG @releaseFiles --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "YURO Windows $env:YURO_RELEASE_TAG" --notes "Installation et mise à jour de YURO pour Windows."

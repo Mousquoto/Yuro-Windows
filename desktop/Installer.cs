@@ -1,0 +1,31 @@
+using System;
+using System.IO;
+using System.IO.Compression;
+using System.Reflection;
+using System.Diagnostics;
+using System.Windows.Forms;
+using Microsoft.Win32;
+using System.Threading.Tasks;
+class YuroInstaller {
+ static string Root=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Programs","YURO");
+ static bool Silent=false;static string[] Args;
+ [STAThread] static void Main(string[] args){Args=args;if(Array.Exists(args,a=>a=="--cleanup")){Cleanup(args);return;}Silent=Array.Exists(args,a=>a.Equals("/S",StringComparison.OrdinalIgnoreCase));foreach(string arg in args){if(arg.StartsWith("/D=")){string selected=Path.GetFullPath(arg.Substring(3));if(selected.Length<5)throw new Exception("Dossier invalide");Root=selected;}}
+  if(Array.Exists(args,a=>a=="--uninstall")){Uninstall();return;}Application.EnableVisualStyles();
+  if(Silent){try{Install();if(Array.Exists(args,a=>a=="--force-run"))Process.Start(Path.Combine(Root,"YURO.exe"));}catch{Environment.ExitCode=1;}return;}
+  bool preview=Array.Exists(args,a=>a=="--preview"||a=="--render-preview");var setup=new YuroSetupForm(p=>Install(p),()=>Process.Start(Path.Combine(Root,"YURO.exe")),preview);int renderIndex=Array.IndexOf(args,"--render-preview");if(renderIndex>=0&&renderIndex+1<args.Length){setup.RenderPreview(args[renderIndex+1]);setup.Dispose();return;}Application.Run(setup);
+ }
+ static void Install(Action<int,string> progress=null){string target=Path.GetFullPath(Root);Directory.CreateDirectory(target);string prefix=target.TrimEnd(Path.DirectorySeparatorChar)+Path.DirectorySeparatorChar;
+  foreach(Process p in Process.GetProcessesByName("YURO")){try{if(p.MainModule.FileName.StartsWith(prefix,StringComparison.OrdinalIgnoreCase)){p.CloseMainWindow();if(!p.WaitForExit(30000))throw new Exception("Ferme YURO avant de continuer.");}}catch(System.ComponentModel.Win32Exception){}}
+  using(Stream payload=Assembly.GetExecutingAssembly().GetManifestResourceStream("Payload.zip")){if(payload==null)throw new Exception("Les fichiers de YURO sont manquants.");using(ZipArchive zip=new ZipArchive(payload,ZipArchiveMode.Read)){long total=0,done=0,lastReport=0;foreach(ZipArchiveEntry e in zip.Entries)total+=e.Length;foreach(ZipArchiveEntry entry in zip.Entries){string dest=Path.GetFullPath(Path.Combine(target,entry.FullName.Replace('/',Path.DirectorySeparatorChar)));if(!dest.StartsWith(prefix,StringComparison.OrdinalIgnoreCase))throw new Exception("Chemin invalide dans le programme.");if(entry.FullName.EndsWith("/")){Directory.CreateDirectory(dest);continue;}Directory.CreateDirectory(Path.GetDirectoryName(dest));using(Stream input=entry.Open())using(FileStream output=File.Create(dest)){byte[] buffer=new byte[131072];int read;while((read=input.Read(buffer,0,buffer.Length))>0){output.Write(buffer,0,read);done+=read;if(done-lastReport>4194304){lastReport=done;if(progress!=null)progress((int)(done*94/Math.Max(1,total)),"Installation des fichiers de YURO…");}}}}}}
+  if(progress!=null)progress(96,"Création des raccourcis…");
+  Shortcut(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory));Shortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"YURO"));
+  using(RegistryKey key=Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\YURO")){key.SetValue("DisplayName","YURO");key.SetValue("DisplayVersion","1.0.3");key.SetValue("Publisher","YURO");key.SetValue("InstallLocation",target);key.SetValue("DisplayIcon",Path.Combine(target,"YURO.exe"));key.SetValue("UninstallString","\""+Path.Combine(target,"YURO-Desinstaller.exe")+"\" --uninstall");key.SetValue("NoModify",1);key.SetValue("NoRepair",1);}
+ }
+ static void Shortcut(string folder){Directory.CreateDirectory(folder);Type type=Type.GetTypeFromProgID("WScript.Shell");dynamic shell=Activator.CreateInstance(type);dynamic link=shell.CreateShortcut(Path.Combine(folder,"YURO.lnk"));link.TargetPath=Path.Combine(Root,"YURO.exe");link.WorkingDirectory=Root;link.IconLocation=Path.Combine(Root,"YURO-Desinstaller.exe");link.Save();}
+ static void Uninstall(){string own=Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);string expected=Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Programs","YURO"));if(!Path.GetFullPath(own).Equals(expected,StringComparison.OrdinalIgnoreCase))return;if(MessageBox.Show("Desinstaller YURO ? Les donnees de ton compte en ligne sont conservees.","YURO",MessageBoxButtons.YesNo)!=DialogResult.Yes)return;
+  foreach(string f in new[]{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"YURO.lnk"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"YURO","YURO.lnk")})if(File.Exists(f))File.Delete(f);Registry.CurrentUser.DeleteSubKeyTree(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\YURO",false);
+  string helper=Path.Combine(Path.GetTempPath(),"yuro-cleanup-"+Guid.NewGuid().ToString("N")+".exe");File.Copy(Assembly.GetExecutingAssembly().Location,helper);Process.Start(new ProcessStartInfo(helper,"--cleanup --parent="+Process.GetCurrentProcess().Id){UseShellExecute=false,CreateNoWindow=true});
+
+ }
+ static void Cleanup(string[] args){try{string location=Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);if(!Path.GetFullPath(location).TrimEnd(Path.DirectorySeparatorChar).Equals(Path.GetFullPath(Path.GetTempPath()).TrimEnd(Path.DirectorySeparatorChar),StringComparison.OrdinalIgnoreCase))return;foreach(string arg in args)if(arg.StartsWith("--parent=")){int id;if(Int32.TryParse(arg.Substring(9),out id)){try{Process.GetProcessById(id).WaitForExit(15000);}catch(ArgumentException){}}}string expected=Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Programs","YURO"));if(Path.GetFullPath(Root).Equals(expected,StringComparison.OrdinalIgnoreCase)&&Directory.Exists(expected))Directory.Delete(expected,true);}catch{Environment.ExitCode=1;}}
+}
