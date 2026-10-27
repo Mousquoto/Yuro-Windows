@@ -41,13 +41,18 @@ jobs:
         run: |
           $releaseVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
           ./build-installer.ps1 -Version $releaseVersion
+      - name: Stage installer artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force ../desktop-release | Out-Null
+          Copy-Item -Path ../../YURO-PC/*.exe -Destination ../desktop-release
+          Copy-Item -LiteralPath ../../YURO-PC/latest.yml -Destination ../desktop-release
       - uses: actions/upload-artifact@v4
         with:
           name: YURO-Windows
-          path: |
-            ../YURO-PC/*.exe
-            ../YURO-PC/*.blockmap
-            ../YURO-PC/latest.yml
+          path: desktop-release/
+          compression-level: 0
+          if-no-files-found: error
       - name: Publish Windows update
         if: github.event_name == 'push'
         shell: pwsh
