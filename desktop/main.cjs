@@ -1,8 +1,8 @@
 const {app,BrowserWindow,Menu,shell,dialog}=require('electron');
 const path=require('node:path');
 const {autoUpdater}=require('electron-updater');
-const SITE='https://yuro-rho.vercel.app/';
-const TRUSTED=new Set(['https://yuro-rho.vercel.app','https://discord.com','https://www.discord.com']);
+const SITE='https://yurocollection.fr/';
+const TRUSTED=new Set(['https://yuro-rho.vercel.app','https://yurocollection.fr','https://discord.com','https://www.discord.com']);
 let win,updateReady=false,checking=false;
 function safeExternal(raw){try{const u=new URL(raw);if(['https:','http:'].includes(u.protocol))shell.openExternal(u.href);}catch{}}
 function permitted(raw){try{return TRUSTED.has(new URL(raw).origin);}catch{return false;}}

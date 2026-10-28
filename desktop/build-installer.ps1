@@ -1,4 +1,5 @@
-param([string]$Version='1.0.3')
+param([string]$Version='')
+if (-not $Version) { $Version=(Get-Content -LiteralPath (Join-Path $PSScriptRoot 'package.json') -Raw | ConvertFrom-Json).version }
 $ErrorActionPreference='Stop'
 if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Version invalide' }
 $projectRoot=Split-Path $PSScriptRoot -Parent

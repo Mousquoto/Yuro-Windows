@@ -1,6 +1,6 @@
 # YURO pour Windows
 
-Application officielle de YURO : https://yuro-rho.vercel.app. Internet est nécessaire. La connexion Discord et la progression du site restent synchronisées.
+Application officielle de YURO : https://yurocollection.fr. Internet est nécessaire. La connexion Discord et la progression du site restent synchronisées.
 
 ## Distribution
 
