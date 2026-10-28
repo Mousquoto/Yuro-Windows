@@ -1,6 +1,6 @@
 {
   "name": "yuro-desktop",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "YURO — Ton univers à collectionner",
   "author": "YURO",
   "private": true,
@@ -24,6 +24,7 @@
     },
     "files": [
       "main.cjs",
+      "updates.cjs",
       "loading.html",
       "assets/**",
       "package.json"
